@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 from email.message import EmailMessage
 from typing import Any
 
@@ -30,17 +31,34 @@ toolset: FunctionToolset[Deps] = FunctionToolset(id="google")
 
 
 # ---- auth ------------------------------------------------------------------
+def _client_config(settings: Settings) -> dict[str, Any]:
+    """Load the OAuth client JSON downloaded from Google Cloud Console, with useful errors."""
+    path = settings.google_credentials_path
+    if not path.exists():
+        raise SystemExit(
+            f"Missing {path}.\n"
+            "Create an OAuth client (type: Desktop app) in Google Cloud Console, enable the Gmail and "
+            "Google Calendar APIs, and save the downloaded JSON at that path."
+        )
+    try:
+        config = json.loads(path.read_text())
+    except (OSError, ValueError):
+        config = None
+    if not isinstance(config, dict) or not isinstance(config.get("installed", config.get("web")), dict):
+        raise SystemExit(
+            f"{path} is not an OAuth client secrets file.\n"
+            "Download the JSON for a Desktop-app OAuth client (Google Cloud Console \u2192 APIs & Services "
+            "\u2192 Credentials \u2192 your client \u2192 Download JSON) and save that file there unchanged. "
+            'It should look like {"installed": {"client_id": "...", "client_secret": "...", ...}}.'
+        )
+    return config
+
+
 def authorize(settings: Settings) -> None:
     """Interactive OAuth flow (opens a browser). Stores a refresh token in the data dir."""
     from google_auth_oauthlib.flow import InstalledAppFlow
 
-    if not settings.google_credentials_path.exists():
-        raise SystemExit(
-            f"Missing {settings.google_credentials_path}.\n"
-            "Create an OAuth client (type: Desktop app) in Google Cloud Console, enable the Gmail and "
-            "Google Calendar APIs, and save the downloaded JSON at that path."
-        )
-    flow = InstalledAppFlow.from_client_secrets_file(str(settings.google_credentials_path), SCOPES)
+    flow = InstalledAppFlow.from_client_config(_client_config(settings), SCOPES)
     creds = flow.run_local_server(port=0)
     settings.google_token_path.write_text(creds.to_json())
     settings.google_token_path.chmod(0o600)

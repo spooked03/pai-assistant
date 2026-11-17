@@ -17,7 +17,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from pydantic_ai import FunctionToolset, ModelRetry, RunContext
 
-from ..config import Settings
+from ..config import Settings, write_private_file
 from ..deps import Deps
 
 SCOPES = [
@@ -42,8 +42,7 @@ def authorize(settings: Settings) -> None:
         )
     flow = InstalledAppFlow.from_client_secrets_file(str(settings.google_credentials_path), SCOPES)
     creds = flow.run_local_server(port=0)
-    settings.google_token_path.write_text(creds.to_json())
-    settings.google_token_path.chmod(0o600)
+    write_private_file(settings.google_token_path, creds.to_json())
 
 
 def is_authorized(settings: Settings) -> bool:
@@ -54,7 +53,7 @@ def _credentials(settings: Settings) -> Credentials:
     creds = Credentials.from_authorized_user_file(str(settings.google_token_path), SCOPES)
     if not creds.valid and creds.expired and creds.refresh_token:
         creds.refresh(Request())
-        settings.google_token_path.write_text(creds.to_json())
+        write_private_file(settings.google_token_path, creds.to_json())
     return creds
 
 

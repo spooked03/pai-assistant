@@ -81,6 +81,9 @@ class Store:
     def __init__(self, path: Path):
         # Sync tools can run concurrently in worker threads, so all access goes through a lock.
         self._lock = threading.RLock()
+        # Owner-only from creation: the DB holds notes, memories and conversation history.
+        path.touch(mode=0o600, exist_ok=True)
+        path.chmod(0o600)
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)

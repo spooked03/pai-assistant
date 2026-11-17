@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-from .config import Settings
+from .config import Settings, load_env
 from .db import Store
 from .session import Session
 from .tools import google
@@ -29,7 +29,7 @@ HELP = """\
   /load <id>      switch to a conversation
   /memories       show what the assistant remembers
   /todos          show open todos
-  /model [name]   show or change the model (e.g. openai:gpt-5.1)
+  /model [name]   show or change the model (e.g. openrouter:<vendor>/<model>)
   /help           this help
   /quit           exit  (Ctrl-D works too)
 """
@@ -138,6 +138,7 @@ def main(argv: list[str] | None = None) -> None:
     auth.add_argument("service", choices=["google"])
     args = parser.parse_args(argv)
 
+    load_env()
     settings = Settings()
     if args.model:
         settings.model = args.model

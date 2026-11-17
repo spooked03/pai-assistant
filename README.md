@@ -9,13 +9,26 @@ Every action with side effects asks you to approve it first: shell commands, fil
 
 ```bash
 cd ~/Projects/pai-assistant
-cp .env.example .env        # set PAI_MODEL + API key
+mkdir -p ~/.config/pai-assistant
+cp .env.example ~/.config/pai-assistant/.env   # set PAI_MODEL + API key
 uv run assistant            # resumes your last conversation
 uv run assistant --new      # fresh conversation
 uv run assistant --model openai:gpt-5.1
 ```
 
 Install it globally with `uv tool install -e .` to get `assistant` on your PATH.
+
+## Models
+
+`PAI_MODEL` takes any PydanticAI model string: `anthropic:…`, `openai:…`, `google-gla:…`, `ollama:…`, or
+**OpenRouter**:
+
+```bash
+OPENROUTER_API_KEY=sk-or-...
+PAI_MODEL=openrouter:<vendor>/<model>      # slug from https://openrouter.ai/models
+```
+
+You can also switch mid-chat with `/model openrouter:<vendor>/<model>`. Pick a model that supports tool calling.
 
 In-chat commands: `/new`, `/list`, `/load <id>`, `/memories`, `/todos`, `/model <name>`, `/help`, `/quit`.
 

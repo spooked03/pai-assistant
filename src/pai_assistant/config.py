@@ -16,6 +16,18 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def write_private_file(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` so the file is owner-only (0600) from the moment it exists.
+
+    Opening with mode 0600 avoids the window where ``write_text`` + ``chmod`` leaves a freshly created
+    file readable by other users; ``fchmod`` also tightens an existing file whose mode was loosened.
+    """
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(text)
+
+
 def _xdg(var: str, fallback: str) -> Path:
     return Path(os.environ.get(var) or Path.home() / fallback)
 
@@ -93,5 +105,12 @@ class Settings(BaseSettings):
         return ZoneInfo(self.timezone)
 
     def ensure_dirs(self) -> None:
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        """Create the data and config dirs as owner-only (0700).
+
+        They hold the database (notes, memories, conversation history incl. email text), the Google
+        token, API keys in ``.env`` and the CLI prompt history. Existing dirs are tightened too.
+        Only these two leaf dirs are touched, never their parents.
+        """
+        for d in (self.data_dir, self.config_dir):
+            d.mkdir(parents=True, exist_ok=True, mode=0o700)
+            d.chmod(0o700)

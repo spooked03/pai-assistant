@@ -1,0 +1,31 @@
+[project]
+name = "pai-assistant"
+version = "0.1.0"
+description = "Personal assistant built with PydanticAI"
+readme = "README.md"
+authors = [
+    { name = "spooked03", email = "sietserijks@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "google-api-python-client>=2.202.0",
+    "google-auth-oauthlib>=1.5.0",
+    "prompt-toolkit>=3.0.53",
+    "pydantic-ai-slim[anthropic,duckduckgo,google,openai,web-fetch]>=2.69.0",
+    "pydantic-settings>=2.16.3",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+pai-assistant = "pai_assistant.cli:main"
+assistant = "pai_assistant.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

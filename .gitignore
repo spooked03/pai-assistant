@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+
+# Secrets and local data
+.env.*
+!.env.example
+*credentials*.json
+*token*.json
+*.db
+.ruff_cache/

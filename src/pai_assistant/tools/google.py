@@ -31,6 +31,10 @@ toolset: FunctionToolset[Deps] = FunctionToolset(id="google")
 
 
 # ---- auth ------------------------------------------------------------------
+# google_auth_oauthlib needs the first three; the token exchange for Desktop clients needs the secret.
+_REQUIRED_CLIENT_KEYS = ("client_id", "client_secret", "auth_uri", "token_uri")
+
+
 def _client_config(settings: Settings) -> dict[str, Any]:
     """Load the OAuth client JSON downloaded from Google Cloud Console, with useful errors."""
     path = settings.google_credentials_path
@@ -40,17 +44,34 @@ def _client_config(settings: Settings) -> dict[str, Any]:
             "Create an OAuth client (type: Desktop app) in Google Cloud Console, enable the Gmail and "
             "Google Calendar APIs, and save the downloaded JSON at that path."
         )
+    how_to_fix = (
+        "Download the JSON for a Desktop-app OAuth client (Google Cloud Console \u2192 APIs & Services "
+        "\u2192 Credentials \u2192 your client \u2192 Download JSON) and save that file there unchanged. "
+        'It should look like {"installed": {"client_id": "...", "client_secret": "...", ...}}.'
+    )
     try:
-        config = json.loads(path.read_text())
-    except (OSError, ValueError):
+        text = path.read_text()
+    except OSError as e:
+        raise SystemExit(f"Cannot read {path}: {e.strerror or e}") from None
+    try:
+        config = json.loads(text)
+    except ValueError:
         config = None
-    if not isinstance(config, dict) or not isinstance(config.get("installed", config.get("web")), dict):
-        raise SystemExit(
-            f"{path} is not an OAuth client secrets file.\n"
-            "Download the JSON for a Desktop-app OAuth client (Google Cloud Console \u2192 APIs & Services "
-            "\u2192 Credentials \u2192 your client \u2192 Download JSON) and save that file there unchanged. "
-            'It should look like {"installed": {"client_id": "...", "client_secret": "...", ...}}.'
-        )
+    if not isinstance(config, dict):
+        raise SystemExit(f"{path} is not an OAuth client secrets file.\n{how_to_fix}")
+    client = config.get("installed")
+    if not isinstance(client, dict):
+        if isinstance(config.get("web"), dict):
+            # The local-server flow redirects to http://localhost:<random port>, which a Web client
+            # rejects with redirect_uri_mismatch, so fail early with a clear explanation instead.
+            raise SystemExit(
+                f"{path} is for a 'Web application' OAuth client, but this assistant needs a "
+                f"'Desktop app' client.\n{how_to_fix}"
+            )
+        raise SystemExit(f"{path} is not an OAuth client secrets file.\n{how_to_fix}")
+    missing = sorted(k for k in _REQUIRED_CLIENT_KEYS if not client.get(k))
+    if missing:
+        raise SystemExit(f"{path} is missing {', '.join(missing)}.\n{how_to_fix}")
     return config
 
 

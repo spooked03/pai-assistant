@@ -7,6 +7,9 @@ from datetime import datetime
 from pydantic_ai import Agent, DeferredToolRequests, RunContext
 from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool
 from pydantic_ai.common_tools.web_fetch import web_fetch_tool
+from pydantic_ai.models import Model
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from .config import Settings
 from .deps import Deps
@@ -28,6 +31,16 @@ You are a personal assistant for one person. Be concise, direct and practical.
 """
 
 
+def build_model(settings: Settings) -> Model | str:
+    """A custom OpenAI-compatible endpoint when PAI_BASE_URL is set, otherwise a PydanticAI model string."""
+    if not settings.base_url:
+        return settings.model
+    name = settings.model.removeprefix("openai:")
+    # Local servers often need no key, but the OpenAI client insists on one.
+    provider = OpenAIProvider(base_url=settings.base_url, api_key=settings.api_key or "not-needed")
+    return OpenAIChatModel(name, provider=provider)
+
+
 def build_agent(settings: Settings) -> Agent[Deps, str | DeferredToolRequests]:
     toolsets = [personal.toolset]
     if settings.enable_shell:
@@ -40,7 +53,7 @@ def build_agent(settings: Settings) -> Agent[Deps, str | DeferredToolRequests]:
         tools += [duckduckgo_search_tool(max_results=8), web_fetch_tool(max_content_length=30_000)]
 
     agent: Agent[Deps, str | DeferredToolRequests] = Agent(
-        settings.model,
+        build_model(settings),
         deps_type=Deps,
         output_type=[str, DeferredToolRequests],
         instructions=BASE_INSTRUCTIONS,

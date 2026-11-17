@@ -41,11 +41,19 @@ def load_env() -> None:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PAI_", env_file=ENV_FILES[::-1], extra="ignore")
 
-    # Any PydanticAI model string, e.g.
-    #   anthropic:claude-sonnet-5-5 | openai:gpt-5.1 | google-gla:gemini-2.5-pro
-    #   openrouter:<vendor>/<model>  (slugs as listed on https://openrouter.ai/models)
-    # For Ollama: set OLLAMA_BASE_URL and use ollama:<model>.
-    model: str = "anthropic:claude-sonnet-5-5"
+    # Model to use. Two modes:
+    #
+    # 1. PAI_BASE_URL unset: a PydanticAI model string ("<provider>:<model>"), e.g.
+    #      openrouter:deepseek/deepseek-v4.1-flash-1017 | anthropic:claude-sonnet-5-5
+    #      openai:gpt-5.1 | google-gla:gemini-2.5-pro | ollama:qwen3:14b
+    #    The provider's API key comes from its usual env var (OPENROUTER_API_KEY, ...).
+    #
+    # 2. PAI_BASE_URL set: any OpenAI-compatible endpoint (DeepSeek, vLLM, llama.cpp, LM Studio,
+    #    LiteLLM, Together, Groq, ...). PAI_MODEL is then the endpoint's own model name, and the key
+    #    comes from PAI_API_KEY (optional for local servers).
+    model: str = "openrouter:deepseek/deepseek-v4.1-flash-1017"
+    base_url: str | None = None
+    api_key: str | None = None
 
     user_name: str | None = None
     timezone: str = "Europe/Amsterdam"
@@ -62,6 +70,10 @@ class Settings(BaseSettings):
     enable_web: bool = True
 
     shell_timeout: int = 60
+
+    @property
+    def model_label(self) -> str:
+        return f"{self.model} @ {self.base_url}" if self.base_url else self.model
 
     @property
     def db_path(self) -> Path:

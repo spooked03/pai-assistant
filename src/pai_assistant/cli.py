@@ -29,7 +29,8 @@ HELP = """\
   /load <id>      switch to a conversation
   /memories       show what the assistant remembers
   /todos          show open todos
-  /model [name]   show or change the model (e.g. openrouter:<vendor>/<model>)
+  /model [name]   show or change the model (keeps the current endpoint)
+  /endpoint [url] show or change the OpenAI-compatible base URL ("/endpoint off" to unset)
   /help           this help
   /quit           exit  (Ctrl-D works too)
 """
@@ -69,7 +70,7 @@ async def chat(settings: Settings, *, new: bool) -> None:
 
     google_note = "connected" if google.is_authorized(settings) else "not connected (`assistant auth google`)"
     console.print(
-        f"[bold]pai-assistant[/bold] · model [cyan]{settings.model}[/cyan] · Google {google_note}\n"
+        f"[bold]pai-assistant[/bold] · model [cyan]{settings.model_label}[/cyan] · Google {google_note}\n"
         f"[dim]Conversation #{session.conversation_id} ({len(session.messages)} messages). /help for commands.[/dim]"
     )
 
@@ -112,7 +113,12 @@ async def chat(settings: Settings, *, new: bool) -> None:
                     if arg:
                         settings.model = arg
                         session.reload_agent()
-                    console.print(f"Model: [cyan]{settings.model}[/cyan]")
+                    console.print(f"Model: [cyan]{settings.model_label}[/cyan]")
+                case "/endpoint":
+                    if arg:
+                        settings.base_url = None if arg in {"off", "none"} else arg
+                        session.reload_agent()
+                    console.print(f"Model: [cyan]{settings.model_label}[/cyan]")
                 case _:
                     console.print(f"[red]Unknown command {cmd}[/red]. /help")
             continue
@@ -133,6 +139,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="assistant", description="Personal assistant (PydanticAI)")
     parser.add_argument("--new", action="store_true", help="start a new conversation instead of resuming")
     parser.add_argument("--model", help="override PAI_MODEL for this session")
+    parser.add_argument("--base-url", help="override PAI_BASE_URL (OpenAI-compatible endpoint) for this session")
     sub = parser.add_subparsers(dest="command")
     auth = sub.add_parser("auth", help="connect external accounts")
     auth.add_argument("service", choices=["google"])
@@ -142,6 +149,8 @@ def main(argv: list[str] | None = None) -> None:
     settings = Settings()
     if args.model:
         settings.model = args.model
+    if args.base_url:
+        settings.base_url = args.base_url
     settings.ensure_dirs()
 
     if args.command == "auth":

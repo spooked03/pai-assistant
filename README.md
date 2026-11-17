@@ -20,15 +20,26 @@ Install it globally with `uv tool install -e .` to get `assistant` on your PATH.
 
 ## Models
 
-`PAI_MODEL` takes any PydanticAI model string: `anthropic:…`, `openai:…`, `google-gla:…`, `ollama:…`, or
-**OpenRouter**:
+The default model is **DeepSeek V4.1 Flash 1017 through OpenRouter**
+(`openrouter:deepseek/deepseek-v4.1-flash-1017`). It only needs `OPENROUTER_API_KEY`.
 
-```bash
-OPENROUTER_API_KEY=sk-or-...
-PAI_MODEL=openrouter:<vendor>/<model>      # slug from https://openrouter.ai/models
-```
+There are two ways to choose a different model:
 
-You can also switch mid-chat with `/model openrouter:<vendor>/<model>`. Pick a model that supports tool calling.
+1. **A PydanticAI model string**: `PAI_MODEL=<provider>:<model>`, for example `anthropic:…`, `openai:…`,
+   `google-gla:…` or `openrouter:<vendor>/<model>`. The API key comes from the provider's usual
+   environment variable.
+2. **Any OpenAI-compatible endpoint**: set `PAI_BASE_URL`. `PAI_MODEL` is then the endpoint's own
+   model name, and `PAI_API_KEY` is the key (optional for local servers):
+
+   ```bash
+   PAI_BASE_URL=https://api.deepseek.com   PAI_MODEL=deepseek-flash      PAI_API_KEY=sk-...
+   PAI_BASE_URL=http://localhost:11434/v1  PAI_MODEL=qwen3:14b           # Ollama
+   PAI_BASE_URL=http://localhost:8000/v1   PAI_MODEL=<served-model>      # vLLM / llama.cpp / LM Studio
+   ```
+
+Override for one session with `--model` / `--base-url`, or switch mid-chat with `/model <name>` and
+`/endpoint <url>` (`/endpoint off` returns to option 1). The assistant relies on tools, so pick a model
+that supports tool calling.
 
 In-chat commands: `/new`, `/list`, `/load <id>`, `/memories`, `/todos`, `/model <name>`, `/help`, `/quit`.
 
